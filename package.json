@@ -1,0 +1,21 @@
+{
+  "name": "pikvm-dev",
+  "version": "1.0.0",
+  "description": "Virtual KVM on a pi,",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tonyvas-pro/pikvm.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tonyvas-pro/pikvm/issues"
+  },
+  "homepage": "https://github.com/tonyvas-pro/pikvm#readme"
+}
