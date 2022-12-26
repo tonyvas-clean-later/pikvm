@@ -7,6 +7,7 @@ class SocketIOServer{
 
     start(){
         return new Promise((resolve, reject) => {
+            // Create basic socket io server
             this.io = socketio(this.server.server);
             resolve();
         })
