@@ -3,11 +3,11 @@ const https = require('https');
 const fs = require('fs');
 
 class ExpressServer{
-    constructor(port, certPath, keyPath, publicPath){
+    constructor(port, publicPath, certPath, keyPath){
         this.port = port;
+        this.publicPath = publicPath;
         this.certPath = certPath;
         this.keyPath = keyPath;
-        this.publicPath = publicPath;
     }
 
     start(){
