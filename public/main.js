@@ -1,8 +1,13 @@
 let socket = io();
 let img = document.getElementById('img');
 
+let frameTimes = [];
+
 // Listen for stream data
 socket.on('stream', frame => {
+    // // Log framerate
+    console.log('fps', measureFPS());
+
     // Encode frame data into a url src for image
     let buffer = new Uint8Array(frame);
     let blob = new Blob([buffer.buffer], {type: 'image/jpg'});
@@ -11,3 +16,20 @@ socket.on('stream', frame => {
     // Set image src to encoded url
     img.src = src;
 })
+
+function measureFPS(){
+    // Max frame times to remember
+    const MAX_FRAMETIME_HIST = 30;
+
+    // Append time of current frame
+    frameTimes.push(new Date().getTime());
+    
+    // Remove oldes frames if above limit
+    while (frameTimes.length > MAX_FRAMETIME_HIST){
+        frameTimes.splice(0, 1);
+    }
+
+    // Calculate fps
+    let ms = frameTimes[frameTimes.length - 1] - frameTimes[0];
+    return frameTimes.length / ms * 1000;
+}
