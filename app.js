@@ -20,6 +20,8 @@ const MJPG_STREAMER_PATH = `${__dirname}/mjpg-streamer/mjpg-streamer-experimenta
 const STREAM_RESOLUTION = '1920x1080';
 const STREAM_FRAMERATE = '30';
 
+const HID_KEYCODE_FILE = `${__dirname}/keycodes.json`;
+
 // Get ports from env if set, if not use defaults
 let httpsPort = process.env.HTTPS_PORT || DEFAULT_HTTPS_PORT;
 let streamPort = process.env.STREAM_PORT || DEFAULT_STREAM_PORT;
@@ -44,6 +46,12 @@ function start(){
                 // Start mjpg-streamer server
                 setupStream(socket).then(stream => {
                     console.log('Stream started!');
+
+                    // Start USB HID service
+                    setupUSBHID(socket).then(usbhid => {
+                        console.log('USB HID started!');
+                        resolve();
+                    }).catch(reject);
                 }).catch(reject);
             }).catch(reject);
         }).catch(reject);
@@ -94,6 +102,20 @@ function setupStream(socket){
         // Start streamer server
         stream.start().then(() => {
             resolve(stream);
+        }).catch(reject);
+    })
+}
+
+function setupUSBHID(socket){
+    return new Promise((resolve, reject) => {
+        let usbhid = new USBHID(HID_KEYCODE_FILE);
+
+        socket.addListener('keys', (keysDown) => {
+            usbhid.writeKeys(keysDown)
+        })
+
+        usbhid.start().then(() => {
+            resolve(usbhid);
         }).catch(reject);
     })
 }

@@ -2,6 +2,7 @@ let socket = io();
 let img = document.getElementById('img');
 
 let frameTimes = [];
+let keysDown = [];
 
 // Listen for stream data
 socket.on('stream', frame => {
@@ -16,6 +17,31 @@ socket.on('stream', frame => {
     // Set image src to encoded url
     img.src = src;
 })
+
+document.body.onkeydown = e => {
+    for (let code of keysDown){
+        if (e.code == code){
+            return
+        }
+    }
+
+    keysDown.push(e.code);
+    sendKeysDown();
+}
+
+document.body.onkeyup = e => {
+    let i = keysDown.indexOf(e.code);
+    if (i >= 0){
+        keysDown.splice(i, 1);
+    }
+
+    sendKeysDown();
+}
+
+function sendKeysDown(){
+    console.log(keysDown);
+    socket.emit('keys', keysDown);
+}
 
 function measureFPS(){
     // Max frame times to remember
