@@ -4,6 +4,7 @@ console.clear()
 const ExpressServer = require('./express-server');
 const SocketIOServer = require('./socketio-server');
 const VideoStream = require('./video-stream');
+const USBHID = require('./usb-hid');
 
 // Default ports to use if not specified by env
 const DEFAULT_HTTPS_PORT = 8443;
@@ -23,19 +24,54 @@ const STREAM_FRAMERATE = '30';
 let httpsPort = process.env.HTTPS_PORT || DEFAULT_HTTPS_PORT;
 let streamPort = process.env.STREAM_PORT || DEFAULT_STREAM_PORT;
 
-// Start express server
-let server = new ExpressServer(httpsPort, HTTPS_PUBLIC, HTTPS_CERT_PATH, HTTPS_KEY_PATH);
-server.start().then(() => {
-    console.log(`HTTPS server running at https://192.168.10.120:${httpsPort}`);
+start().then(() => {
+    console.log('Setup complete!');
+}).catch(error => {
+    console.error('Setup failed!', error);
+    process.exit(1);
+})
 
-    // Start socketio server using express server
-    let socket = new SocketIOServer(server);
-    socket.start().then(() => {
-        console.log('SocketIO server started');
+function start(){
+    return new Promise((resolve, reject) => {
+        // Start express server
+        setupHTTPS().then(server => {
+            console.log(`HTTPS server running at https://192.168.10.120:${httpsPort}`);
+            
+            // Start socketio server using express server
+            setupSocketIO(server).then(socket => {
+                console.log('SocketIO server started');
+                
+                // Start mjpg-streamer server
+                setupStream(socket).then(stream => {
+                    console.log('Stream started!');
+                }).catch(reject);
+            }).catch(reject);
+        }).catch(reject);
+    })
+}
 
-        // Start mjpg-streamer server
+function setupHTTPS(){
+    return new Promise((resolve, reject) => {
+        let server = new ExpressServer(httpsPort, HTTPS_PUBLIC, HTTPS_CERT_PATH, HTTPS_KEY_PATH);
+        server.start().then(() => {
+            resolve(server);
+        }).catch(reject);
+    })
+}
+
+function setupSocketIO(server){
+    return new Promise((resolve, reject) => {
+        let socket = new SocketIOServer(server);
+        socket.start().then(() => {
+            resolve(socket);
+        }).catch(reject);
+    })
+}
+
+function setupStream(socket){
+    return new Promise((resolve, reject) => {
         let stream = new VideoStream(streamPort, MJPG_STREAMER_PATH, STREAM_RESOLUTION, STREAM_FRAMERATE);
-
+    
         // Attach stderr, stdout and exit listeners
         stream.onStderr = (stderr) => {
             console.error('stderr', stderr.toString());
@@ -56,8 +92,8 @@ server.start().then(() => {
         }
 
         // Start streamer server
-        stream.start(() => {
-            console.log('Stream started!');
-        })
-    }).catch(console.error)
-}).catch(console.error)
+        stream.start().then(() => {
+            resolve(stream);
+        }).catch(reject);
+    })
+}
