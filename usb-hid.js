@@ -151,7 +151,7 @@ class USBHID{
             }
 
             // Write bytes
-            console.log(codes);
+            // console.log(codes, bytes.length);
             fs.writeFile('/dev/hidg0', bytes, 'binary', (err) => {
                 if (err){
                     reject(err)

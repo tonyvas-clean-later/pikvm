@@ -82,11 +82,11 @@ function setupStream(socket){
     
         // Attach stderr, stdout and exit listeners
         stream.onStderr = (stderr) => {
-            console.error('stderr', stderr.toString());
+            // console.error('stderr', stderr.toString());
         }
 
         stream.onStdout = (stdout) => {
-            console.log('stdout', stdout.toString());
+            // console.log('stdout', stdout.toString());
         }
 
         stream.onExit = (code, signal) => {
