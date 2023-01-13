@@ -16,6 +16,10 @@ h1{
     text-align: center;
 }
 
+#mouse_lock_canvas{
+    display: none;
+}
+
 #toolbar_div{
     display: flex;
     flex-direction: row;

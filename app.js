@@ -140,9 +140,10 @@ function setupMouseHID(socket){
 
         socket.addListener('mouse', (data) => {
             let buttons = data.buttons;
-            let newPosition = data.position;
+            let moveX = data.moveX;
+            let moveY = data.moveY;
 
-            mouse.write(buttons, newPosition).catch(err => {
+            mouse.write(buttons, moveX, moveY).catch(err => {
                 console.error('MouseHID write:', err);
             })
         })

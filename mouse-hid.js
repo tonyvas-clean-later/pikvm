@@ -3,8 +3,6 @@ const fs = require('fs');
 class MouseHID{
     constructor(hidfile){
         this.hidfile = hidfile;
-        this.currentX = 0;
-        this.currentY = 0;
     }
 
     start(){
@@ -13,22 +11,12 @@ class MouseHID{
         })
     }
 
-    write(buttonCode, newPosition){
+    write(buttonCode, moveX, moveY){
         return new Promise((resolve, reject) => {
-            // Get x movement
-            let xCode = newPosition.x - this.currentX;
-
-            // Get y movement
-            let yCode = newPosition.y - this.currentY;
-
-            // Create array with the codes
-            let codes = [buttonCode, xCode, yCode];
+            let codes = [buttonCode, moveX, moveY];
 
             // Write codes
             this.writeCodes(codes).then(() => {
-                this.currentX = newPosition.x;
-                this.currentY = newPosition.y;
-
                 resolve();
             }).catch(reject)
         });

@@ -1,12 +1,20 @@
 let socket = io();
 
+// Image and div parent elements for video stream
 let streamDiv = document.getElementById('stream_div');
 let streamImg = document.getElementById('stream_img');
 
+let mouseLockCanvas = document.getElementById('mouse_lock_canvas');
+
+// Timestamps for when frames come in, used for calculating fps
 let frameTimes = [];
+
+// Keyboard keys and mouse buttons held down
 let keyboardKeysDown = [];
 let mouseKeysDown = 0;
-let mousePosition = { x: null, y: null }
+
+// If client mouse is locked and controlling remote mouse
+let isMouselocked = false;
 
 // Listen for stream data
 socket.on('stream', frame => {
@@ -22,55 +30,77 @@ socket.on('stream', frame => {
     streamImg.src = src;
 })
 
+document.body.onload = () => {
+    mouseLockCanvas.requestPointerLock = mouseLockCanvas.requestPointerLock || mouseLockCanvas.mozRequestPointerLock;
+    document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
+}
+
 streamImg.onload = () => {
     resizeStreamImage();
 }
 
 document.onkeydown = e => {
-    if (isCapturing()){
-        for (let code of keyboardKeysDown){
-            if (e.code == code){
-                return
-            }
+    // Check if key is already down
+    for (let code of keyboardKeysDown){
+        if (e.code == code){
+            return
         }
-    
-        keyboardKeysDown.push(e.code);
-        sendKeyboard();
-    
-        return false;
+    }
+    // Add key to list
+    keyboardKeysDown.push(e.code);
+
+    // Check if currently capturing input
+    if (isCapturing()){
+        // Check if user entered the release keyboard combo
+        if (isMouseReleaseCombo()){
+            // Unlock mouse
+            unlockCapture();
+        }
+        else{
+            // If not, send keys
+            sendKeyboard();
+            e.preventDefault()
+            return false;
+        }
     }
 }
 
 document.onkeyup = e => {
+    // Get index of key in list of keys down
+    let i = keyboardKeysDown.indexOf(e.code);
+    if (i >= 0){
+        // Remove key if found
+        keyboardKeysDown.splice(i, 1);
+    }
+
+    // Check if capturing user input
     if (isCapturing()){
-        let i = keyboardKeysDown.indexOf(e.code);
-        if (i >= 0){
-            keyboardKeysDown.splice(i, 1);
-        }
-
         sendKeyboard();
-
+        e.preventDefault()
         return false;
     }
 }
 
 document.onmousemove = e => {
-    let x = e.clientX;
-    let y = e.clientY;
-
-    mousePosition = {x, y};
-
     if (isCapturing()){
-        sendMouse();
+        sendMouse(e.movementX, e.movementY);
     }
 }
 
 document.onmousedown = e => {
     if (isCapturing()){
+        // If capturing send mouse input
         mouseKeysDown = e.buttons;
         sendMouse();
     
         return false;
+    }
+    else{
+        // Check if clicked over stream after having escaped
+        if (isMouseOverStream(e.clientX, e.clientY)){
+            // Lock mouse if so
+            lockCapture();
+        }
     }
 }
 
@@ -83,9 +113,57 @@ document.onmouseup = e => {
     }
 }
 
+document.onpointerlockchange = e => {
+    if (document.pointerLockElement === mouseLockCanvas || document.mozPointerLockElement === mouseLockCanvas){
+        isMouselocked = true;
+    }
+    else{
+        isMouselocked = false;
+    }
+}
+
 setInterval(() => {
     updateUI();
 }, 1000 / 30);
+
+function lockCapture(){
+    mouseLockCanvas.requestPointerLock();
+}
+
+function unlockCapture(){
+    document.exitPointerLock();
+}
+
+function isMouseReleaseCombo(){
+    const COMBO = ['ControlLeft', 'AltLeft'];
+
+    // Check combo key count
+    if (keyboardKeysDown.length != COMBO.length){
+        return false;
+    }
+
+    // Check if each combo key is one of the keys down
+    for (let key of COMBO){
+        if (!keyboardKeysDown.includes(key)){
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function isMouseOverStream(mouseX, mouseY){
+    return (
+        // Left side
+        mouseX >= streamImg.offsetLeft &&
+        // Right side
+        mouseX <= streamImg.offsetLeft + streamImg.width &&
+        // Top side
+        mouseY >= streamImg.offsetTop &&
+        // Bottom side
+        mouseY <= streamImg.offsetTop + streamImg.height
+    )
+}
 
 function updateUI(){
     let span = document.getElementById('capturing_span');
@@ -101,12 +179,7 @@ function updateUI(){
 }
 
 function isCapturing(){
-    let imgX = streamImg.offsetLeft;
-    let imgY = streamImg.offsetTop;
-    let imgW = streamImg.width;
-    let imgH = streamImg.height;
-
-    return mousePosition.x >= imgX && mousePosition.x <= imgX + imgW && mousePosition.y >= imgY && mousePosition.y <= imgY + imgH;
+    return isMouselocked;
 }
 
 function resizeStreamImage(){
@@ -147,8 +220,20 @@ function sendKeyboard(){
     socket.emit('keyboard', keyboardKeysDown);
 }
 
-function sendMouse(){
-    socket.emit('mouse', {buttons: mouseKeysDown, position: mousePosition});
+function sendMouse(x = 0, y = 0){
+    socket.emit('mouse', formatMousePayload(mouseKeysDown, x, y));
+}
+
+function clearKeyboard(){
+    socket.emit('keyboard', []);
+}
+
+function clearMouse(){
+    socket.emit('mouse', formatMousePayload(0, 0, 0));
+}
+
+function formatMousePayload(buttons, x, y){
+    return { buttons: buttons, moveX: x, moveY: y }
 }
 
 function measureFPS(){
