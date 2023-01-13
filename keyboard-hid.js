@@ -1,7 +1,8 @@
 const fs = require('fs');
 
-class USBHID{
-    constructor(keycodeFile){
+class KeyboardHID{
+    constructor(hidfile, keycodeFile){
+        this.hidfile = hidfile;
         this.keycodeFile = keycodeFile;
     }
 
@@ -152,7 +153,7 @@ class USBHID{
 
             // Write bytes
             // console.log(codes, bytes.length);
-            fs.writeFile('/dev/hidg0', bytes, 'binary', (err) => {
+            fs.writeFile(this.hidfile, bytes, 'binary', (err) => {
                 if (err){
                     reject(err)
                 }
@@ -164,4 +165,4 @@ class USBHID{
     }
 }
 
-module.exports = USBHID;
+module.exports = KeyboardHID;

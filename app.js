@@ -4,7 +4,8 @@ console.clear()
 const ExpressServer = require('./express-server');
 const SocketIOServer = require('./socketio-server');
 const VideoStream = require('./video-stream');
-const USBHID = require('./usb-hid');
+const KeyboardHID = require('./keyboard-hid');
+const MouseHID = require('./mouse-hid');
 
 // Default ports to use if not specified by env
 const DEFAULT_HTTPS_PORT = 8443;
@@ -20,7 +21,11 @@ const MJPG_STREAMER_PATH = `${__dirname}/mjpg-streamer/mjpg-streamer-experimenta
 const STREAM_RESOLUTION = '1920x1080';
 const STREAM_FRAMERATE = '30';
 
-const HID_KEYCODE_FILE = `${__dirname}/keycodes.json`;
+// File to translate JS keycodes to HID keycodes
+const KEYBOARD_KEYCODES_FILE = `${__dirname}/keycodes.json`;
+// HID files to write to
+const KEYBOARD_HID_FILE = '/dev/hidg0';
+const MOUSE_HID_FILE = '/dev/hidg1';
 
 // Get ports from env if set, if not use defaults
 let httpsPort = process.env.HTTPS_PORT || DEFAULT_HTTPS_PORT;
@@ -47,10 +52,17 @@ function start(){
                 setupStream(socket).then(stream => {
                     console.log('Stream started!');
 
-                    // Start USB HID service
-                    setupUSBHID(socket).then(usbhid => {
-                        console.log('USB HID started!');
-                        resolve();
+                    // Start keyboard HID
+                    setupKeyboardHID(socket).then(keyboard => {
+                        console.log('Keyboard HID started!');
+                        
+                        // Start mouse HID
+                        setupMouseHID(socket).then(mouse => {
+                            console.log('Mouse HID started!');
+
+                            // Finish setup
+                            resolve();
+                        }).catch(reject);
                     }).catch(reject);
                 }).catch(reject);
             }).catch(reject);
@@ -106,18 +118,37 @@ function setupStream(socket){
     })
 }
 
-function setupUSBHID(socket){
+function setupKeyboardHID(socket){
     return new Promise((resolve, reject) => {
-        let usbhid = new USBHID(HID_KEYCODE_FILE);
+        let keyboard = new KeyboardHID(KEYBOARD_HID_FILE, KEYBOARD_KEYCODES_FILE);
 
-        socket.addListener('keys', (keysDown) => {
-            usbhid.writeKeys(keysDown).catch(err => {
-                console.error('USBHID writeKeys:', err);
+        socket.addListener('keyboard', (keysDown) => {
+            keyboard.writeKeys(keysDown).catch(err => {
+                console.error('KeyboardHID writeKeys:', err);
             })
         })
 
-        usbhid.start().then(() => {
-            resolve(usbhid);
+        keyboard.start().then(() => {
+            resolve(keyboard);
+        }).catch(reject);
+    })
+}
+
+function setupMouseHID(socket){
+    return new Promise((resolve, reject) => {
+        let mouse = new MouseHID(MOUSE_HID_FILE);
+
+        socket.addListener('mouse', (data) => {
+            let buttons = data.buttons;
+            let newPosition = data.position;
+
+            mouse.write(buttons, newPosition).catch(err => {
+                console.error('MouseHID write:', err);
+            })
+        })
+
+        mouse.start().then(() => {
+            resolve(mouse);
         }).catch(reject);
     })
 }

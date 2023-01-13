@@ -4,8 +4,9 @@ let streamDiv = document.getElementById('stream_div');
 let streamImg = document.getElementById('stream_img');
 
 let frameTimes = [];
-let keysDown = [];
-let mousePos = { x: null, y: null }
+let keyboardKeysDown = [];
+let mouseKeysDown = 0;
+let mousePosition = { x: null, y: null }
 
 // Listen for stream data
 socket.on('stream', frame => {
@@ -26,28 +27,28 @@ streamImg.onload = () => {
 }
 
 document.onkeydown = e => {
-    if (isCapturingKeypresses()){
-        for (let code of keysDown){
+    if (isCapturing()){
+        for (let code of keyboardKeysDown){
             if (e.code == code){
                 return
             }
         }
     
-        keysDown.push(e.code);
-        sendKeysDown();
+        keyboardKeysDown.push(e.code);
+        sendKeyboard();
     
         return false;
     }
 }
 
 document.onkeyup = e => {
-    if (isCapturingKeypresses()){
-        let i = keysDown.indexOf(e.code);
+    if (isCapturing()){
+        let i = keyboardKeysDown.indexOf(e.code);
         if (i >= 0){
-            keysDown.splice(i, 1);
+            keyboardKeysDown.splice(i, 1);
         }
 
-        sendKeysDown();
+        sendKeyboard();
 
         return false;
     }
@@ -57,7 +58,29 @@ document.onmousemove = e => {
     let x = e.clientX;
     let y = e.clientY;
 
-    mousePos = {x, y};
+    mousePosition = {x, y};
+
+    if (isCapturing()){
+        sendMouse();
+    }
+}
+
+document.onmousedown = e => {
+    if (isCapturing()){
+        mouseKeysDown = e.buttons;
+        sendMouse();
+    
+        return false;
+    }
+}
+
+document.onmouseup = e => {
+    if (isCapturing()){
+        mouseKeysDown = e.buttons;
+        sendMouse();
+    
+        return false;
+    }
 }
 
 setInterval(() => {
@@ -67,7 +90,7 @@ setInterval(() => {
 function updateUI(){
     let span = document.getElementById('capturing_span');
 
-    if (isCapturingKeypresses()){
+    if (isCapturing()){
         span.innerHTML = 'Capturing keypresses!'
         span.style.color = 'lime'
     }
@@ -77,13 +100,13 @@ function updateUI(){
     }
 }
 
-function isCapturingKeypresses(){
+function isCapturing(){
     let imgX = streamImg.offsetLeft;
     let imgY = streamImg.offsetTop;
     let imgW = streamImg.width;
     let imgH = streamImg.height;
 
-    return mousePos.x >= imgX && mousePos.x <= imgX + imgW && mousePos.y >= imgY && mousePos.y <= imgY + imgH;
+    return mousePosition.x >= imgX && mousePosition.x <= imgX + imgW && mousePosition.y >= imgY && mousePosition.y <= imgY + imgH;
 }
 
 function resizeStreamImage(){
@@ -120,8 +143,12 @@ function resizeStreamImage(){
     }
 }
 
-function sendKeysDown(){
-    socket.emit('keys', keysDown);
+function sendKeyboard(){
+    socket.emit('keyboard', keyboardKeysDown);
+}
+
+function sendMouse(){
+    socket.emit('mouse', {buttons: mouseKeysDown, position: mousePosition});
 }
 
 function measureFPS(){
