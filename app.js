@@ -111,7 +111,9 @@ function setupUSBHID(socket){
         let usbhid = new USBHID(HID_KEYCODE_FILE);
 
         socket.addListener('keys', (keysDown) => {
-            usbhid.writeKeys(keysDown)
+            usbhid.writeKeys(keysDown).catch(err => {
+                console.error('USBHID writeKeys:', err);
+            })
         })
 
         usbhid.start().then(() => {
